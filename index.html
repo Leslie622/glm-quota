@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>GLM 套餐查询</title>
+    <script>
+      // 浏览器预览 mock：仅在非 Tauri 环境生效（桌面 WebView 有 __TAURI_INTERNALS__，不会走到这里）
+      if (!window.__TAURI_INTERNALS__) {
+        window.__TAURI_INTERNALS__ = {
+          transformCallback: (cb) => cb,
+          invoke: (cmd, args) => {
+            const now = Date.now();
+            if (cmd === 'list_keys')
+              return Promise.resolve([{ alias: 'Leslie', key: 'd77a3f5c74...cYyYKo5', selected: true }]);
+            if (cmd === 'fetch_quota')
+              return Promise.resolve({
+                level: 'pro',
+                limits: [
+                  { type: 'TOKENS_LIMIT', unit: 3, number: 5, percentage: 100, nextResetTime: now + 4.5e6 },
+                  { type: 'TOKENS_LIMIT', unit: 6, number: 1, percentage: 40, nextResetTime: now + 5.8e8 },
+                  { type: 'TIME_LIMIT', unit: 5, number: 1, usage: 1000, currentValue: 17, remaining: 983, percentage: 1, nextResetTime: now + 1.5e9,
+                    usageDetails: [{ modelCode: 'search-prime', usage: 16 }, { modelCode: 'web-reader', usage: 1 }] },
+                ],
+              });
+            if (cmd === 'fetch_usage') {
+              // 支持自定义 range（start/end YYYY-MM-DD），统一按天返回
+              let s, e;
+              if (args && args.start && args.end) {
+                s = new Date(args.start + 'T00:00:00');
+                e = new Date(args.end + 'T00:00:00');
+              } else {
+                const days = (args && args.days) || 30;
+                s = new Date(now - days * 864e5);
+                e = new Date(now);
+              }
+              const times = [], tokens = [], calls = [];
+              for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+                const i = Math.floor((d - s) / 864e5);
+                times.push(d.toISOString().slice(0, 10));
+                tokens.push(Math.round(2e8 * Math.abs(Math.sin(i * 1.7)) + 2e7));
+                calls.push(Math.round(900 * Math.abs(Math.cos(i * 2.3)) + 30));
+              }
+              const m53 = tokens.map(v => Math.round(v * 0.3));
+              const flash = tokens.map(v => v - Math.round(v * 0.3));
+              return Promise.resolve({
+                model: { x_time: times, tokensUsage: tokens, modelCallCount: calls,
+                  modelDataList: [
+                    { modelName: 'GLM-5.3', tokensUsage: m53, totalTokens: 748981212 },
+                    { modelName: 'GLM-5.3-Flash', tokensUsage: flash, totalTokens: 1725118236 },
+                  ],
+                  totalUsage: { totalModelCallCount: 12814, totalTokensUsage: 2474099448,
+                    modelSummaryList: [{ modelName: 'GLM-5.3', totalTokens: 748981212 }, { modelName: 'GLM-5.3-Flash', totalTokens: 1725118236 }] } },
+                tool: { totalUsage: { totalNetworkSearchCount: 15 },
+                  toolSummaryList: [{ toolCode: 'search-prime', toolName: '联网搜索 MCP', totalUsageCount: 15 }, { toolCode: 'web-reader', toolName: '网页读取 MCP', totalUsageCount: 1 }] },
+              });
+            }
+            return Promise.reject('unknown cmd: ' + cmd);
+          },
+        };
+      }
+    </script>
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
